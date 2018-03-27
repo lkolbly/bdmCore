@@ -131,14 +131,6 @@ bdc_interface bdc_interface(
 
 // Bootup state machine
 
-//assign hold_commands_in_reset = !is_booting_mcu && !is_syncing_mcu && !is_running_mcu;
-
-/*assign mcu_pwr =
-	is_booting_mcu ? startup_mcu_pwr :
-	is_syncing_mcu ? 1 :
-	is_running_mcu ? 1 :
-	0;*/
-	
 assign bkgd_out = 1'd0;
 
 assign bkgd_is_high_z =
@@ -150,11 +142,6 @@ assign bkgd_is_high_z =
 	1'd1;
 
 // Start the MCU if we receive an "s" and we aren't currently running
-//assign startup_start = trigger && !is_running_mcu;
-//assign sync_start = is_booting_mcu && startup_ready;
-
-//reg is_reading_status;
-
 assign startup_start = state == `STATE_IDLE && do_start_mcu;
 assign bdc_read_data = state == `STATE_IDLE && do_read;
 assign bdc_send_data = state == `STATE_IDLE && do_write;
@@ -165,35 +152,23 @@ assign ready = state == `STATE_IDLE && !do_start_mcu && !do_stop_mcu && !do_read
 
 always @(posedge clk) begin
 	// These registers are strobes
-	//startup_start <= 0;
 	startup_stop <= 0;
 	sync_start <= 0;
-	//bdc_send_data <= 0;
-	//bdc_read_data <= 0;
 	set_bdc_pulse_gen <= 0;
 	valid <= 0;
 
 	if (rst) begin
-		/*is_booting_mcu <= 0;
-		is_syncing_mcu <= 0;
-		is_running_mcu <= 0;*/
 		state <= `STATE_IDLE;
-		//ready <= 1;
 	end else if (state == `STATE_IDLE) begin
 		if (do_start_mcu) begin
-			//is_booting_mcu <= 1;
 			state <= `STATE_BOOTING;
-			//startup_start <= 1;
-			//ready <= 0;
 		end else if (do_stop_mcu) begin
 			// Stopping is instantaneous, if that ever changes we need to create a state for it (and fiddle ready)
 			startup_stop <= 1;
 		end else if (do_read) begin
 			state <= `STATE_READING;
-			//ready <= 0;
 		end else if (do_write) begin
 			state <= `STATE_WRITING;
-			//ready <= 0;
 		end else if (do_delay) begin
 			state <= `STATE_DELAYING;
 			delay_counter <= {data_in, 4'd0};
@@ -204,29 +179,22 @@ always @(posedge clk) begin
 		end
 	end else if (state == `STATE_BOOTING) begin
 		if (startup_ready) begin
-			//is_booting_mcu <= 0;
-			//is_syncing_mcu <= 1;
 			state <= `STATE_SYNCING;
 			sync_start <= 1;
 		end
-	end else if (state == `STATE_SYNCING) begin //is_syncing_mcu && (sync_ready || trigger)) begin
+	end else if (state == `STATE_SYNCING) begin
 		if (sync_ready) begin
-			//is_syncing_mcu <= 0;
-			//is_running_mcu <= 1;
 			set_bdc_pulse_gen <= 1;
 			state <= `STATE_IDLE;
-			//ready <= 1;
 		end
 	end else if (state == `STATE_READING) begin
 		if (bdc_ready) begin
 			state <= `STATE_IDLE;
-			//ready <= 1;
 			valid <= 1;
 		end
 	end else if (state == `STATE_WRITING) begin
 		if (bdc_ready) begin
 			state <= `STATE_IDLE;
-			//ready <= 1;
 		end
 	end else if (state == `STATE_DELAYING) begin
 		if (delay_counter == 0) begin

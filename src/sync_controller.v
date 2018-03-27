@@ -21,7 +21,7 @@
 module sync_controller(
 	input clk,
 	input rst,
-	output bkgd,
+	output bkgd, // TODO: This is a constant 0
 	input bkgd_in,
 	output is_sending,
 	input start_sync,
@@ -34,13 +34,13 @@ module sync_controller(
 
 parameter HIGHTIME = 32'd6500; // 6500 works! 2000 min
 
-reg is_pulsing_high, is_sending_sync, is_waiting_for_settle, is_waiting_for_pull_low, is_counting_sync;
+reg is_sending_sync, is_waiting_for_settle, is_waiting_for_pull_low, is_counting_sync;
 reg [31:0] sync_count;
 
-assign debug = {is_pulsing_high, is_sending_sync, is_waiting_for_settle, is_waiting_for_pull_low, is_counting_sync};
+assign debug = {is_sending_sync, is_waiting_for_settle, is_waiting_for_pull_low, is_counting_sync};
 
-assign bkgd = is_pulsing_high;
-assign is_sending = is_sending_sync || is_pulsing_high;
+assign bkgd = 1'd0;
+assign is_sending = is_sending_sync;
 assign sync_length = sync_count;
 assign sync_length_is_ready = (!is_sending_sync) && (!is_counting_sync);
 
@@ -60,20 +60,9 @@ always @(posedge clk) begin
 		sync_count <= HIGHTIME; // The start sync pulse will be as long as possible
 		ready <= 0;
 	end else if (start_sync) begin
-		//is_pulsing_high <= 1;
 		is_sending_sync <= 1;
-		sync_count <= HIGHTIME;//32'hff;
+		sync_count <= HIGHTIME;
 		ready <= 0;
-	/*end else if (is_pulsing_high == 1) begin
-		if (sync_count == 0) begin
-			is_pulsing_high <= 0;
-			is_sending_sync <= 1;
-			is_waiting_for_settle <= 0;
-			is_counting_sync <= 0;
-			sync_count <= HIGHTIME; // The start sync pulse will be as long as possible
-		end else begin
-			sync_count <= sync_count - 1;
-		end*/
 	end else if (is_sending_sync == 1) begin
 		// We're currently holding the bkgd line low for at least 128 cycles
 		if (sync_count == 0) begin
