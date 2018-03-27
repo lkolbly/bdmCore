@@ -236,25 +236,6 @@ always @(posedge clk) begin
 		end
 	end else if (state == `STATE_ECHO_TEST) begin
 		state <= `STATE_IDLE;
-	//end else if (do_stop_mcu) begin
-		// Shutdown!
-		//is_running_mcu <= 0;
-	/*end else if (is_running_mcu) begin
-		// Run the read_status state machine
-		if (is_reading_status) begin
-			// Waiting for the SS to reply
-			if (bdc_ready) begin
-				is_reading_status <= 0;
-				bdc_data_in <= 8'he4;
-				bdc_send_data <= 1;
-			end
-		end else begin
-			// Waiting for the E4 to end
-			if (bdc_ready) begin
-				is_reading_status <= 1;
-				bdc_read_data <= 1;
-			end
-		end*/
 	end
 end
 
