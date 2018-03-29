@@ -45,7 +45,6 @@ assign sync_length = sync_count;
 assign sync_length_is_ready = (!is_sending_sync) && (!is_counting_sync);
 
 always @(posedge clk) begin
-	is_pulsing_high <= is_pulsing_high;
 	is_sending_sync <= is_sending_sync;
 	is_waiting_for_settle <= is_waiting_for_settle;
 	is_waiting_for_pull_low <= is_waiting_for_pull_low;
@@ -53,7 +52,6 @@ always @(posedge clk) begin
 	sync_count <= sync_count;
 
 	if (rst) begin
-		is_pulsing_high <= 0;
 		is_sending_sync <= 0;
 		is_waiting_for_settle <= 0;
 		is_counting_sync <= 0;
