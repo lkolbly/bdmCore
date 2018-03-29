@@ -21,7 +21,6 @@
 module sync_controller(
 	input clk,
 	input rst,
-	output bkgd, // TODO: This is a constant 0
 	input bkgd_in,
 	output is_sending,
 	input start_sync,
@@ -34,60 +33,57 @@ module sync_controller(
 
 parameter HIGHTIME = 32'd6500; // 6500 works! 2000 min
 
-reg is_sending_sync, is_waiting_for_settle, is_waiting_for_pull_low, is_counting_sync;
+`define STATE_IDLE 0
+`define STATE_SENDING_SYNC 1
+`define STATE_WAITING_FOR_SETTLE 2
+`define STATE_WAITING_FOR_PULL_LOW 3
+`define STATE_COUNTING_SYNC 4
+
+reg [2:0] state;
+
 reg [31:0] sync_count;
 
-assign debug = {is_sending_sync, is_waiting_for_settle, is_waiting_for_pull_low, is_counting_sync};
+assign debug = {2'd0, state};
 
-assign bkgd = 1'd0;
-assign is_sending = is_sending_sync;
+assign is_sending = state == `STATE_SENDING_SYNC;
 assign sync_length = sync_count;
-assign sync_length_is_ready = (!is_sending_sync) && (!is_counting_sync);
+assign sync_length_is_ready = (state != `STATE_SENDING_SYNC) && (state != `STATE_COUNTING_SYNC);
 
 always @(posedge clk) begin
-	is_sending_sync <= is_sending_sync;
-	is_waiting_for_settle <= is_waiting_for_settle;
-	is_waiting_for_pull_low <= is_waiting_for_pull_low;
-	is_counting_sync <= is_counting_sync;
 	sync_count <= sync_count;
 
 	if (rst) begin
-		is_sending_sync <= 0;
-		is_waiting_for_settle <= 0;
-		is_counting_sync <= 0;
+		state <= `STATE_IDLE;
 		sync_count <= HIGHTIME; // The start sync pulse will be as long as possible
 		ready <= 0;
 	end else if (start_sync) begin
-		is_sending_sync <= 1;
+		state <= `STATE_SENDING_SYNC;
 		sync_count <= HIGHTIME;
 		ready <= 0;
-	end else if (is_sending_sync == 1) begin
+	end else if (state == `STATE_SENDING_SYNC) begin
 		// We're currently holding the bkgd line low for at least 128 cycles
 		if (sync_count == 0) begin
-			is_sending_sync <= 0;
-			is_waiting_for_settle <= 1;
+			state <= `STATE_WAITING_FOR_SETTLE;
 			sync_count <= 8'h0f;
 		end else begin
 			sync_count <= sync_count - 1;
 		end
-	end else if (is_waiting_for_settle == 1) begin
+	end else if (state == `STATE_WAITING_FOR_SETTLE) begin
 		// We're waiting for the bkgd line to settle high and then be pulled low by the target
 		if (sync_count == 0) begin
-			is_waiting_for_settle <= 0;
-			is_waiting_for_pull_low <= 1;
+			state <= `STATE_WAITING_FOR_PULL_LOW;
 		end else begin
 			sync_count <= sync_count - 1;
 		end
-	end else if (is_waiting_for_pull_low == 1) begin
+	end else if (state == `STATE_WAITING_FOR_PULL_LOW) begin
 		if (bkgd_in == 0) begin
-			is_waiting_for_pull_low <= 0;
-			is_counting_sync <= 1;
+			state <= `STATE_COUNTING_SYNC;
 		end
-	end else if (is_counting_sync == 1) begin
+	end else if (state == `STATE_COUNTING_SYNC) begin
 		// We're counting the 128 target cycles that the device is holding the line low.
 		if (bkgd_in == 1) begin
 			// We're done! Send it off!
-			is_counting_sync <= 0;
+			state <= `STATE_IDLE;
 			ready <= 1;
 		end else begin
 			sync_count <= sync_count + 1;

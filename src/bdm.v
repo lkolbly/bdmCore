@@ -46,7 +46,7 @@ module bdm(
 reg [7:0] echo_data;
 
 wire [31:0] sync_count;
-wire sync_bkgd, sync_is_sending;
+wire sync_is_sending;
 wire [4:0] sync_debug;
 reg sync_start;
 wire sync_ready;
@@ -62,7 +62,6 @@ wire [7:0] bdc_data_in;
 
 wire hold_commands_in_reset;
 assign hold_commands_in_reset = 1'd0; // TODO: Remove
-//reg is_booting_mcu, is_syncing_mcu, is_running_mcu;
 wire bdc_clk_pulse;
 
 // Idle could be either MCU on or MCU off
@@ -95,7 +94,6 @@ startup_controller startup_controller(
 sync_controller sync_controller(
 	.clk(clk),
 	.rst(rst || hold_commands_in_reset),
-	.bkgd(sync_bkgd),
 	.bkgd_in(bkgd_in),
 	.is_sending(sync_is_sending),
 	.start_sync(sync_start),
