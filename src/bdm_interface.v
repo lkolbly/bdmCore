@@ -98,7 +98,7 @@ assign tx_data =
 	misfire_cache_full ? misfire_cache :
 	(has_immediate_serial_command && rx_data == 2) ? 8'd55 :
 	(has_immediate_serial_command && rx_data == 4) ? cmdbuf_data_count[7:0] :
-	(has_immediate_serial_command && rx_data == 5) ? {5'd0, cmdbuf_data_count[10:8]} :
+	(has_immediate_serial_command && rx_data == 5) ? {6'd0, cmdbuf_data_count[9:8]} :
 	reply_dout;
 
 // The serial frontend to the FIFOs
