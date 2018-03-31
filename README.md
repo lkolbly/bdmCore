@@ -5,6 +5,8 @@ This is a Verilog core that can talk the BDC interface to communicate with RS08 
 
 Also included is code which can convert a simple serial language into instructions for the BDM engine.
 
+Also included is a Python assembler for the RS08 core, as well as code which can talk the serial protocol to program and debug these MCUs.
+
 Dependencies
 ============
 

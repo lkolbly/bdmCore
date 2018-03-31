@@ -26,6 +26,7 @@ module bdm(
 	output bkgd_out,
 	output bkgd_is_high_z,
 	output mcu_pwr,
+	output mcu_vpp,
 
 	input do_read,
 	input do_write,
@@ -33,6 +34,8 @@ module bdm(
 	input do_stop_mcu,
 	input do_delay,
 	input do_echo_test,
+	input do_enable_vpp,
+	input do_disable_vpp,
 
 	input [7:0] data_in,
 	output [7:0] data_out,
@@ -145,6 +148,10 @@ assign data_out = state == `STATE_ECHO_TEST ? echo_data : bdc_data_out;
 
 assign ready = state == `STATE_IDLE && !do_start_mcu && !do_stop_mcu && !do_read && !do_write && !do_delay && !do_echo_test;
 
+reg vpp_enabled;
+
+assign mcu_vpp = vpp_enabled;
+
 always @(posedge clk) begin
 	// These registers are strobes
 	startup_stop <= 0;
@@ -154,6 +161,7 @@ always @(posedge clk) begin
 
 	if (rst) begin
 		state <= `STATE_IDLE;
+		vpp_enabled <= 0;
 	end else if (state == `STATE_IDLE) begin
 		if (do_start_mcu) begin
 			state <= `STATE_BOOTING;
@@ -171,6 +179,10 @@ always @(posedge clk) begin
 			state <= `STATE_ECHO_TEST;
 			echo_data <= data_in;
 			valid <= 1;
+		end else if (do_enable_vpp) begin
+			vpp_enabled <= 1;
+		end else if (do_disable_vpp) begin
+			vpp_enabled <= 0;
 		end
 	end else if (state == `STATE_BOOTING) begin
 		if (startup_ready) begin

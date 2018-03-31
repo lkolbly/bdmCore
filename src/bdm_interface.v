@@ -28,6 +28,7 @@ module bdm_interface(
 	input tx_block,
 	inout bkgd,
 	output mcu_pwr,
+	output mcu_vpp,
 	output [7:0] debug
 );
 
@@ -161,6 +162,8 @@ end
 `define BDM_CMD_STOP_MCU 4
 `define BDM_CMD_ECHO_TEST 5
 `define BDM_CMD_DELAY 6
+`define BDM_CMD_ENABLE_VPP 7
+`define BDM_CMD_DISABLE_VPP 8
 
 wire [3:0] bdm_cmd;
 wire [7:0] bdm_data_in, bdm_data_out;
@@ -178,6 +181,7 @@ bdm bdm(
 	.bkgd_out(bdm_bkgd),
 	.bkgd_is_high_z(bdm_bkgd_is_high_z),
 	.mcu_pwr(mcu_pwr),
+	.mcu_vpp(mcu_vpp),
 	
 	.do_read(bdm_cmd == `BDM_CMD_READ),
 	.do_write(bdm_cmd == `BDM_CMD_WRITE),
@@ -185,6 +189,8 @@ bdm bdm(
 	.do_stop_mcu(bdm_cmd == `BDM_CMD_STOP_MCU),
 	.do_delay(bdm_cmd == `BDM_CMD_DELAY),
 	.do_echo_test(bdm_cmd == `BDM_CMD_ECHO_TEST),
+	.do_enable_vpp(bdm_cmd == `BDM_CMD_ENABLE_VPP),
+	.do_disable_vpp(bdm_cmd == `BDM_CMD_DISABLE_VPP),
 	
 	.data_in(bdm_data_in),
 	.data_out(bdm_data_out),
