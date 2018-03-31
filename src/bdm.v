@@ -58,7 +58,6 @@ wire startup_is_sending, startup_ready;
 wire bdc_is_sending, bdc_ready;
 wire [7:0] bdc_data_out;
 wire bdc_read_data, bdc_send_data;
-wire [7:0] bdc_data_in;
 
 wire hold_commands_in_reset;
 assign hold_commands_in_reset = 1'd0; // TODO: Remove
@@ -136,14 +135,12 @@ assign bkgd_is_high_z =
 	(state == `STATE_SYNCING && sync_is_sending) ? 1'd0 :
 	(state == `STATE_READING && bdc_is_sending) ? 1'd0 :
 	(state == `STATE_WRITING && bdc_is_sending) ? 1'd0 :
-	//(is_running_mcu && bdc_is_sending) ? 1'd0 :
 	1'd1;
 
 // Start the MCU if we receive an "s" and we aren't currently running
 assign startup_start = state == `STATE_IDLE && do_start_mcu;
 assign bdc_read_data = state == `STATE_IDLE && do_read;
 assign bdc_send_data = state == `STATE_IDLE && do_write;
-assign bdc_data_in = data_in;
 assign data_out = state == `STATE_ECHO_TEST ? echo_data : bdc_data_out;
 
 assign ready = state == `STATE_IDLE && !do_start_mcu && !do_stop_mcu && !do_read && !do_write && !do_delay && !do_echo_test;

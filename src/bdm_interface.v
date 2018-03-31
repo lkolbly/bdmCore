@@ -34,9 +34,9 @@ module bdm_interface(
 reg [7:0] programmatic_rst;
 
 wire rst;
-assign rst = rst_in || programmatic_rst > 0;
+assign rst = rst_in || (programmatic_rst > 0);
 
-wire [10:0] cmdbuf_data_count;
+wire [9:0] cmdbuf_data_count;
 wire [15:0] cmdbuf_din, cmdbuf_dout;
 wire cmdbuf_wr_en, cmdbuf_rd_en, cmdbuf_full, cmdbuf_empty, cmdbuf_read_ack, cmdbuf_underflow, cmdbuf_valid;
 fifo_16x1024 command_buffer(
@@ -91,10 +91,9 @@ end
 
 // Send the fifo contents back over the serial as fast as possible
 reg [7:0] bytes_left_to_read;
-wire has_immediate_serial_command = new_rx_data && (rx_data == 2 || rx_data == 4 || rx_data == 5) && bytes_left_to_read == 0;
+wire has_immediate_serial_command = new_rx_data && (rx_data == 2 || rx_data == 4 || rx_data == 5) && (bytes_left_to_read == 0);
 
-//assign reply_rd_en = !reply_empty;
-assign new_tx_data = !misfire_cache_full && (reply_valid || has_immediate_serial_command);
+assign new_tx_data = !tx_block && (misfire_cache_full || reply_valid || has_immediate_serial_command);
 assign tx_data =
 	misfire_cache_full ? misfire_cache :
 	(has_immediate_serial_command && rx_data == 2) ? 8'd55 :

@@ -44,7 +44,7 @@ reg [7:0] tgt_clk_timer;
 reg [7:0] data;
 reg [3:0] bitsleft;
 
-assign ready = state == `STATE_IDLE;
+assign ready = state == `STATE_IDLE && !read_data && !send_data;
 
 //assign data_out = 0;
 

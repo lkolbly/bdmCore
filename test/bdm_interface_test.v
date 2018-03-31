@@ -38,6 +38,8 @@ module bdm_interface_test;
 
 	// Bidirs
 	wire bkgd;
+	
+	reg tgt_bkgd;
 
 	// Instantiate the Unit Under Test (UUT)
 	bdm_interface uut (
@@ -51,6 +53,8 @@ module bdm_interface_test;
 		.bkgd(bkgd), 
 		.mcu_pwr(mcu_pwr)
 	);
+	
+	assign (pull1,pull0) bkgd = tgt_bkgd;//tgt_bkgd == 0 ? 1'd0 : 1'd1;
 
 	`define CLK clk=1; #10; clk=0; #10;
 
@@ -61,6 +65,7 @@ module bdm_interface_test;
 		new_rx_data = 0;
 		rx_data = 0;
 		tx_block = 0;
+		tgt_bkgd = 1;
 
 		// Wait 100 ns for global reset to finish
 		`CLK; `CLK; `CLK;
@@ -120,6 +125,32 @@ module bdm_interface_test;
 		new_rx_data = 0;
 		
 		repeat (10000) begin
+			`CLK;
+		end
+		tgt_bkgd = 0;
+		repeat (1457) begin
+			`CLK;
+		end
+		tgt_bkgd = 1;
+		
+		// Create two reads
+		new_rx_data = 1;
+		rx_data = 8'h84;
+		`CLK;	rx_data = 8'h01;
+		`CLK;	rx_data = 8'h0;
+
+		`CLK; rx_data = 8'h06;
+		`CLK; rx_data = 8'd30;
+
+		`CLK;	rx_data = 8'h01;
+		`CLK;	rx_data = 8'h0;
+
+		`CLK; rx_data = 8'h06;
+		`CLK; rx_data = 8'd30;
+		`CLK;
+		new_rx_data = 0;
+		
+		repeat (3000) begin
 			`CLK;
 		end
 		tgt_bkgd = 0;
