@@ -121,6 +121,18 @@ The serial commands are as follows:
 * 4: Retrieves bits 7:0 of data_count of the 16-bit FIFO.
 * 5: Retrieves bits 15:0 of data_count of the 16-bit FIFO.
 
+Software
+========
+
+Included in the sw/ directory are bdm.py and rs08asm.py. The latter can be used to generate memory maps given assembly, see LEDProgram.py as an example. It implements the instruction set as specified in the included datasheet, with a few minor exceptions:
+- Certain instructions taking a "tiny" argument (4-bit or 5-bit) are renamed to have the "t" suffix (indicating "tiny"): addt, clrt, dect, inct, lsat, stat, subt.
+- Instructions taking an immediate argument were renamed to have the "i" suffix: adci, addi, andi, cmpi, eori, lsai, ldxi, movi, orai, sbci, subi.
+- The tst instruction is not included (tsta is, though).
+
+The bdm is how you interface to the BDM. See LEDProgram.py for an example.
+
+If you find any issues, please feel free to open a GitHub issue.
+
 TODO/Known Issues
 =================
 
