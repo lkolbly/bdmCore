@@ -3,23 +3,26 @@ import string
 
 # Generates a rs08asm class
 class rs08asm:
-	def __init__(self):
+	def __init__(self, device):
 		self.instructions = []
 		self.address = 0
+		self.device = device
 		self.labels = {}
+		for k,v in device.labels.items():
+			self.labels[k] = v
 		pass
 
 	def at(self, address):
-		self.address = address
+		self.address = self._labelOrLiteral(address)#address
 
 	def label(self, label):
 		self.labels[label] = self.address
 
-	def assemble(self):
+	def assemble(self, enforceIsFlash=True):
 		memory = {}
 
 		# Turn each instruction into bytes
-		for address, fmt, arguments, values in self.instructions:
+		for address, fmt, arguments, values, _ in self.instructions:
 			nextPc = address + encode(fmt, [], True)[1]
 			args = []
 			for argSpec, value in zip(arguments, values):
@@ -28,7 +31,27 @@ class rs08asm:
 			bitstring, size = encode(fmt, args)
 			for i in range(size):
 				memory[address + i] = int(bitstring[i*8:(i+1)*8], 2)
-			pass
+
+		# Compute statistics about this memory
+		stats = {
+			"flashUsed": 0,
+			"flashAvail": self.device.getFlashQuantity(),
+			"flashRows": set()
+		}
+		for address,_ in memory.items():
+			if self.device.isFlash(address):
+				stats["flashUsed"] += 1
+				stats["flashRows"].add(self.device.flashRowId(address))
+			elif enforceIsFlash:
+				raise Exception("Assembly programs address '%s' which is not in flash memory"%address)
+		return memory, stats
+
+	def debugInfo(self):
+		memory = {}
+
+		for address, _,_,_, meta in self.instructions:
+			memory[address] = meta
+		memory["labels"] = self.labels
 		return memory
 
 	def _processArgument(self, argumentSpec, value, nextPc):
@@ -57,21 +80,15 @@ class rs08asm:
 		pass
 
 	def _labelOrLiteral(self, value, maxValueBits=-1):
-		# Dereferenced index register
-		if isinstance(value, str) and value.lower() == "d[x]":
-			return 0x0e
-
-		# Index register
-		if isinstance(value, str) and value.lower() == "x":
-			return 0x0f
-
 		v = self.labels.get(value, value)
+		if type(v) is str:
+			raise Exception("Value '%s' is somehow unknown - maybe an undefined label?"%v)
 		if maxValueBits > 0 and v >= math.pow(2, maxValueBits):
 			raise Exception("Value '%s' exceeds maximum field size '%s' for type, from '%s'"%(v, maxValueBits, value))
 		return v
 
-	def _add(self, fmt, arguments, values):
-		self.instructions.append((self.address, fmt, arguments, values))
+	def _add(self, name, fmt, arguments, values):
+		self.instructions.append((self.address, fmt, arguments, values, {"instruction": name, "arguments": values}))
 		self.address += encode(fmt, None, True)[1]
 		pass
 	pass
@@ -150,9 +167,9 @@ def encode(fmt, values, justGetSize=False):
 		i += 1
 	return result, int(len(result)/8)
 
-def buildmethod(fmt, arguments):
+def buildmethod(name, fmt, arguments):
 	def method(self, *values):
-		self._add(fmt, arguments, values)
+		self._add(name, fmt, arguments, values)
 		return self
 	return method
 
@@ -239,17 +256,25 @@ def rs08asmgen():
 		name = instruction[0]
 		fmt = instruction[-1]
 		arguments = instruction[1:-1]
-		setattr(rs08asm, name, buildmethod(fmt, arguments))
+		setattr(rs08asm, name, buildmethod(name, fmt, arguments))
 	pass
 
 rs08asmgen()
 
 if __name__ == "__main__":
-	p = rs08asm()
-	p.at(0x30)
+	from mc9rs08kaX import *
+	device = mc9rs08kaX(2)
+	p = rs08asm(device)
+
+	p.at(".FLASHBASE")
 	p.label("main")
 	p.movi(0x01, 0x10)
 	p.movi(0x01, 0x11)
-	p.bra("main") # Branch always could just as well be jmp
+	p.bra("main")
 
-	print(p.assemble())
+	p.at(".RESET")
+	p.jmp("main")
+
+	memory, stats = p.assemble()
+	print(memory)
+	print(stats)

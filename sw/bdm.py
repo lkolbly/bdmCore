@@ -108,23 +108,34 @@ class Bdm:
 		return self.conn.flushCommandQueue(), numberOfCommands
 
 	def execute(self, simulate=False):
+		# Add an echo test as a sentinal for when the commands are done
+		self.conn.enqueueCommand(Command.EchoTest, 123)
+		self.queueOutstandingBytes += 1
+
+		# Figure out how many bytes we're expecting
 		bytesToRead = self.queueOutstandingBytes
 		self.queueOutstandingBytes = 0
 		numberOfCommands = len(self.conn.commandBuffer)
 
 		if simulate:
 			self.conn.commandBuffer = []
-			return [0]*bytesToRead, numberOfCommands, (0,0)
+			return [0]*bytesToRead, numberOfCommands
 
 		self.conn.flushCommandQueue()
 		commandsToRun = (self.conn.getCmdFifoHi() << 8) + self.conn.getCmdFifoLo()
 		self.conn.startEngine()
-		time.sleep(0.1)
-		self.conn.stopEngine()
 		bytesRead = self.conn.readN(bytesToRead)
+		#time.sleep(0.1)
+		self.conn.stopEngine()
+
+		if bytesRead[-1] != 123:
+			raise Exception("Sentinal value was '%s', expected 123!"%bytesRead[-1])
+		bytesRead = bytesRead[:-1]
 
 		commandsLeft = (self.conn.getCmdFifoHi() << 8) + self.conn.getCmdFifoLo()
-		return bytesRead, numberOfCommands, (commandsToRun,commandsLeft)
+		if commandsLeft != 0:
+			raise Exception("Did not execute all commands! There are '%s' left over"%commandsLeft)
+		return bytesRead, numberOfCommands
 
 	def _enqueueCommands(self, *commands):
 		for opcode,data in commands:
@@ -205,7 +216,7 @@ class Bdm:
 
 	def readStatus(self):
 		self._enqueueCommands(
-			(Command.Write, 0x90),
+			(Command.Write, 0xE4),
 			(Command.Read, None)
 		)
 
@@ -230,6 +241,20 @@ class Bdm:
 			(Command.Delay, 30)
 		)
 
+	def writeBreakpoint(self, addr):
+		self._enqueueCommands(
+			(Command.Write, 0xC2),
+			(Command.Write, addr>>8),
+			(Command.Write, addr&0xFF)
+		)
+
+	def readBreakpoint(self):
+		self._enqueueCommands(
+			(Command.Write, 0xE2),
+			(Command.Read, None),
+			(Command.Read, None)
+		)
+
 def writeBytesToMemory(b, memoryMap):
 	numWritten = 0
 	for address,value in memoryMap.items():
@@ -244,14 +269,7 @@ if __name__ == "__main__":
 	b = Bdm()
 	b.testConnection()
 
-	b.enableVpp()
-	b.execute()
-	time.sleep(1)
-	b.disableVpp()
-	b.execute()
-
-	"""
-    b.bootChip()
+	b.bootChip()
 	b.execute()
 	time.sleep(0.05)
 
@@ -268,4 +286,3 @@ if __name__ == "__main__":
 	b.readByte(0x31)
 	b.shutdownChip()
 	print(b.execute())
-	"""
