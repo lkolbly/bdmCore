@@ -29,8 +29,8 @@ module startup_controller(
 );
 
 // Startup sequence:
-// - Pull bkgd low, wait 3us
-// - Turn on power, wait 12us for MCU clock to stabilize
+// - Pull bkgd low, wait 5us (or at least 3us)
+// - Turn on power, wait 24us (or at least 12us) for MCU clock to stabilize
 // - Release bkgd, wait 10us for bkgd to float high
 
 reg is_pulling_low, is_waiting_for_clock, is_waiting_for_bkgd_stable;
@@ -49,7 +49,7 @@ always @(posedge clk) begin
 	end else if (start) begin
 		is_pulling_low <= 1;
 		is_sending <= 1;
-		timer <= 150; // 3us
+		timer <= 250; // 5us
 		ready <= 0;
 	end else if (is_pulling_low) begin
 		if (timer == 0) begin
@@ -57,7 +57,7 @@ always @(posedge clk) begin
 
 			is_pulling_low <= 0;
 			is_waiting_for_clock <= 1;
-			timer <= 600; // 12us
+			timer <= 1200; // 24us
 		end else begin
 			timer <= timer - 1;
 		end

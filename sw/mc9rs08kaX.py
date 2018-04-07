@@ -10,7 +10,7 @@ class mc9rs08kaX:
 			".ACMPSC":  0x13,
 			".ICSC1":   0x14,
 			".ICSC2":   0x15,
-			".ICSTRIM": 0x16,
+			".ICSTRM": 0x16,
 			".ICSSC":   0x17,
 			".MTIMSC":  0x18,
 			".MTIMCLK": 0x19,

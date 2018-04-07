@@ -22,13 +22,17 @@ class rs08asm:
 		memory = {}
 
 		# Turn each instruction into bytes
-		for address, fmt, arguments, values, _ in self.instructions:
+		for address, fmt, arguments, values, dbg in self.instructions:
 			nextPc = address + encode(fmt, [], True)[1]
 			args = []
 			for argSpec, value in zip(arguments, values):
 				args.append(self._processArgument(argSpec, value, nextPc))
 
-			bitstring, size = encode(fmt, args)
+			try:
+				bitstring, size = encode(fmt, args)
+			except Exception as e:
+				print(address, fmt, arguments, values, dbg)
+				raise e
 			for i in range(size):
 				memory[address + i] = int(bitstring[i*8:(i+1)*8], 2)
 

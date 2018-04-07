@@ -36,6 +36,8 @@ module bdm(
 	input do_echo_test,
 	input do_enable_vpp,
 	input do_disable_vpp,
+	input do_echo_sync_value,
+	input do_resync,
 
 	input [7:0] data_in,
 	output [7:0] data_out,
@@ -74,12 +76,12 @@ wire bdc_clk_pulse;
 `define STATE_WRITING 4
 `define STATE_ECHO_TEST 5
 `define STATE_DELAYING 6
+`define STATE_ECHO_SYNC 7
+`define STATE_ECHO_SYNC_LO 8
 
 reg [3:0] state;
 
 reg [7:0] delay_counter;
-
-assign debug = state;
 
 // Startup controller
 startup_controller startup_controller(
@@ -95,7 +97,7 @@ startup_controller startup_controller(
 // SYNC state machine
 sync_controller sync_controller(
 	.clk(clk),
-	.rst(rst || hold_commands_in_reset),
+	.rst(rst || hold_commands_in_reset || do_stop_mcu || do_resync),
 	.bkgd_in(bkgd_in),
 	.is_sending(sync_is_sending),
 	.start_sync(sync_start),
@@ -129,6 +131,8 @@ bdc_interface bdc_interface(
 	.ready(bdc_ready)
 );
 
+assign debug = sync_debug;//state;
+
 // Bootup state machine
 
 assign bkgd_out = 1'd0;
@@ -140,13 +144,16 @@ assign bkgd_is_high_z =
 	(state == `STATE_WRITING && bdc_is_sending) ? 1'd0 :
 	1'd1;
 
-// Start the MCU if we receive an "s" and we aren't currently running
 assign startup_start = state == `STATE_IDLE && do_start_mcu;
 assign bdc_read_data = state == `STATE_IDLE && do_read;
 assign bdc_send_data = state == `STATE_IDLE && do_write;
-assign data_out = state == `STATE_ECHO_TEST ? echo_data : bdc_data_out;
+assign data_out =
+	state == `STATE_ECHO_TEST ? echo_data :
+	state == `STATE_ECHO_SYNC ? sync_count[15:8] :
+	state == `STATE_ECHO_SYNC_LO ? sync_count[7:0] :
+	bdc_data_out;
 
-assign ready = state == `STATE_IDLE && !do_start_mcu && !do_stop_mcu && !do_read && !do_write && !do_delay && !do_echo_test;
+assign ready = state == `STATE_IDLE && !do_start_mcu && !do_stop_mcu && !do_read && !do_write && !do_delay && !do_echo_test && !do_echo_sync_value && !do_resync;
 
 reg vpp_enabled;
 
@@ -183,6 +190,12 @@ always @(posedge clk) begin
 			vpp_enabled <= 1;
 		end else if (do_disable_vpp) begin
 			vpp_enabled <= 0;
+		end else if (do_echo_sync_value) begin
+			state <= `STATE_ECHO_SYNC;
+			valid <= 1;
+		end else if (do_resync) begin
+			state <= `STATE_SYNCING;
+			sync_start <= 1;
 		end
 	end else if (state == `STATE_BOOTING) begin
 		if (startup_ready) begin
@@ -210,6 +223,11 @@ always @(posedge clk) begin
 			delay_counter <= delay_counter - 1;
 		end
 	end else if (state == `STATE_ECHO_TEST) begin
+		state <= `STATE_IDLE;
+	end else if (state == `STATE_ECHO_SYNC) begin
+		state <= `STATE_ECHO_SYNC_LO;
+		valid <= 1;
+	end else if (state == `STATE_ECHO_SYNC_LO) begin
 		state <= `STATE_IDLE;
 	end
 end

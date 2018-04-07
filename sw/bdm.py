@@ -11,14 +11,20 @@ class Command:
 	Delay = 6
 	EnableVpp = 7
 	DisableVpp = 8
+	ReadSyncCount = 9
+	Resync = 10
 
 	@staticmethod
 	def usesData(cmd):
 		return cmd in [Command.Write, Command.EchoTest, Command.Delay]
 
 	@staticmethod
-	def returnsData(cmd):
-		return cmd in [Command.Read, Command.EchoTest]
+	def dataReturned(cmd):
+		return {
+			Command.Read: 1,
+			Command.EchoTest: 1,
+			Command.ReadSyncCount: 2
+		}.get(cmd, 0)
 
 class BdmSerialConnection:
 	def __init__(self, port='/dev/ttyACM0'):
@@ -52,7 +58,7 @@ class BdmSerialConnection:
 
 	def reset(self):
 		self.__writeByte(0x03)
-		time.sleep(0.5)
+		time.sleep(0.25)
 
 	def enqueueCommand(self, opcode, data=None):
 		if not Command.usesData(opcode):
@@ -81,9 +87,12 @@ class BdmSerialConnection:
 		return [self.__readByte() for _ in range(N)]
 
 class Bdm:
-	def __init__(self, port='/dev/ttyACM0'):
-		self.conn = BdmSerialConnection(port)
-		self.conn.reset()
+	def __init__(self, port='/dev/ttyACM0', conn=None):
+		if conn is None:
+			self.conn = BdmSerialConnection(port)
+			self.conn.reset()
+		else:
+			self.conn = conn
 
 		self.queueOutstandingBytes = 0
 
@@ -139,8 +148,7 @@ class Bdm:
 
 	def _enqueueCommands(self, *commands):
 		for opcode,data in commands:
-			if Command.returnsData(opcode):
-				self.queueOutstandingBytes += 1
+			self.queueOutstandingBytes += Command.dataReturned(opcode)
 			self.conn.enqueueCommand(opcode, data)
 		pass
 
@@ -158,6 +166,9 @@ class Bdm:
 
 	def delay(self, ticks):
 		self.conn.enqueueCommand(Command.Delay, ticks)
+
+	def resync(self):
+		self.conn.enqueueCommand(Command.Resync)
 
 	def writeByte(self, addr, data):
 		self._enqueueCommands(
@@ -253,6 +264,11 @@ class Bdm:
 			(Command.Write, 0xE2),
 			(Command.Read, None),
 			(Command.Read, None)
+		)
+
+	def readSyncCount(self):
+		self._enqueueCommands(
+			(Command.ReadSyncCount, None)
 		)
 
 def writeBytesToMemory(b, memoryMap):

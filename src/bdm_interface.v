@@ -35,7 +35,7 @@ module bdm_interface(
 reg [7:0] programmatic_rst;
 
 wire rst;
-assign rst = rst_in || (programmatic_rst > 0);
+assign rst = rst_in || (programmatic_rst != 0);
 
 wire [9:0] cmdbuf_data_count;
 wire [15:0] cmdbuf_din, cmdbuf_dout;
@@ -115,9 +115,7 @@ assign cmdbuf_din = incoming_data;
 always @(posedge clk) begin
 	has_new_incoming_data <= 0;
 	
-	if (programmatic_rst > 0) begin
-		programmatic_rst <= programmatic_rst - 1;
-	end
+	programmatic_rst <= (programmatic_rst != 0) ? programmatic_rst - 1 : 8'd0;
 
 	if (rst) begin
 		bytes_left_to_read <= 0;
@@ -164,6 +162,8 @@ end
 `define BDM_CMD_DELAY 6
 `define BDM_CMD_ENABLE_VPP 7
 `define BDM_CMD_DISABLE_VPP 8
+`define BDM_CMD_ECHO_SYNC_VALUE 9
+`define BDM_CMD_RESYNC 10
 
 wire [3:0] bdm_cmd;
 wire [7:0] bdm_data_in, bdm_data_out;
@@ -191,6 +191,8 @@ bdm bdm(
 	.do_echo_test(bdm_cmd == `BDM_CMD_ECHO_TEST),
 	.do_enable_vpp(bdm_cmd == `BDM_CMD_ENABLE_VPP),
 	.do_disable_vpp(bdm_cmd == `BDM_CMD_DISABLE_VPP),
+	.do_echo_sync_value(bdm_cmd == `BDM_CMD_ECHO_SYNC_VALUE),
+	.do_resync(bdm_cmd == `BDM_CMD_RESYNC),
 	
 	.data_in(bdm_data_in),
 	.data_out(bdm_data_out),
